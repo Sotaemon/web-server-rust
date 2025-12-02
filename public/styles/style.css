@@ -276,17 +276,6 @@ nav {
     position: relative;
 }
 
-.testimonial-card::before {
-    content: """;
-    position: absolute;
-    top: 20px;
-    left: 20px;
-    font-size: 5rem;
-    color: var(--bg-hover);
-    font-family: Georgia, serif;
-    line-height: 1;
-}
-
 .testimonial-card p {
     font-style: italic;
     margin-bottom: 1rem;
