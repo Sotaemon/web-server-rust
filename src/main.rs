@@ -9,7 +9,7 @@ fn main() -> std::io::Result<()> {
     //从持续监听端口获得流
     for stream in listener.incoming() {
         let stream = stream?;
-        handle_connection(stream)?;         //处理流
+        handle_connection(stream)?; //处理流
     }
     Ok(())
 }
@@ -47,39 +47,76 @@ fn handle_connection(mut stream: TcpStream) -> std::io::Result<()> {
         return Ok(());
     }
 
-    let (status, body, content_type) = if path == "/" {
-        match fs::read_to_string("public/index.html") {
-            Ok(content) => ("200 OK", content, "text/html; charset=utf-8"),
-            Err(_) => read_404_page(), // 复用404逻辑
+    let response_bytes = if path == "/" {
+        match fs::read("public/index.html") {
+            Ok(bytes) => build_response("200 OK", &bytes, get_content_type(".html")),
+
+            Err(_) => build_404_response(),
         }
     } else if path == "/about" {
-        ("200 OK", "This is the About page!".to_string(), "text/plain")
-    } else if path.starts_with("/styles/") {
-        let file_path = format!("public{}", path); // 转为 public/css/style.css
-        match fs::read_to_string(&file_path) {
-            Ok(content) => ("200 OK", content, "text/css; charset=utf-8"),
-            Err(_) => read_404_page(),
+        let body = b"This is the About page!";
+
+        build_response("200 OK", body, "text/plain")
+    } else if path.starts_with("/styles/")
+        || path.starts_with("/scripts/")
+        || path.starts_with("/assets/")
+    {
+        let file_path = format!("public{}", path);
+
+        match fs::read(&file_path) {
+            Ok(bytes) => build_response("200 OK", &bytes, get_content_type(path)),
+
+            Err(_) => build_404_response(),
         }
     } else {
-        // 其他路径 → 404
-        read_404_page()
+        build_404_response()
     };
 
-    let response = format!(
-        "HTTP/1.1 {}\r\nContent-Type: {}\r\nContent-Length: {}\r\n\r\n{}",
-        status,
-        content_type,
-        body.len(),
-        body
-    );
-
-    stream.write(response.as_bytes())?;
+    stream.write_all(&response_bytes)?;
     stream.flush()?;
     Ok(())
 }
-fn read_404_page() -> (&'static str, String, &'static str) {
-    match fs::read_to_string("public/404.html") {
-        Ok(content) => ("404 Not Found", content, "text/html; charset=utf-8"),
-        Err(_) => ("404 Not Found", "404 Not Found".to_string(), "text/plain"),
+fn get_content_type(path: &str) -> &'static str {
+    if path.ends_with(".css") {
+        "text/css; charset=utf-8"
+    } else if path.ends_with(".js") {
+        "application/javascript; charset=utf-8"
+    } else if path.ends_with(".png") {
+        "image/png"
+    } else if path.ends_with(".jpg") || path.ends_with(".jpeg") {
+        "image/jpeg"
+    } else if path.ends_with(".gif") {
+        "image/gif"
+    } else if path.ends_with(".webp") {
+        "image/webp"
+    } else if path.ends_with(".ico") {
+        "image/x-icon"
+    } else if path.ends_with(".html") || path == "/" {
+        "text/html; charset=utf-8"
+    } else {
+        "application/octet-stream"
+    }
+}
+
+fn build_response(status: &str, body: &[u8], content_type: &str) -> Vec<u8> {
+    let header = format!(
+        "HTTP/1.1 {}\r\nContent-Type: {}\r\nContent-Length: {}\r\n\r\n",
+        status,
+        content_type,
+        body.len()
+    );
+
+    let mut response = header.into_bytes();
+    response.extend_from_slice(body);
+    response
+}
+
+fn build_404_response() -> Vec<u8> {
+    match fs::read("public/404.html") {
+        Ok(bytes) => build_response("404 Not Found", &bytes, "text/html; charset=utf-8"),
+        Err(_) => {
+            let body = b"404 Not Found";
+            build_response("404 Not Found", body, "text/plain")
+        }
     }
 }
