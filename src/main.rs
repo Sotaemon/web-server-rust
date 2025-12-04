@@ -2,7 +2,7 @@ use std::fs;
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::path::{Component, Path};
-use std::time::SystemTime;
+use std::time::{SystemTime, Instant, UNIX_EPOCH};
 fn main() -> std::io::Result<()> {
     //设置监听端口 127.0.0.1:7878
     let listener = TcpListener::bind("127.0.0.1:7878")?;
@@ -14,12 +14,26 @@ fn main() -> std::io::Result<()> {
     }
     Ok(())
 }
+/// 处理TCP连接请求
+/// 
+/// 该函数负责解析HTTP请求，根据请求路径和方法返回相应的响应。
+/// 支持GET方法访问/about路径和其他静态文件。
+/// 
+/// # 参数
+/// * `stream` - TCP流连接，用于读取请求和发送响应
+/// 
+/// # 返回值
+/// * `std::io::Result<()>` - 操作结果，成功时返回Ok，失败时返回相应的错误信息
 fn handle_connection(mut stream: TcpStream) -> std::io::Result<()> {
     let mut buffer = [0; 1024];
     stream.read(&mut buffer)?;
+    
+    // 解析HTTP请求的第一行，获取请求方法和路径
     let request = String::from_utf8_lossy(&buffer[..]);
     let request_line = request.lines().next().unwrap_or("");
     let parts: Vec<&str> = request_line.split_whitespace().collect();
+    
+    // 检查请求格式是否有效（至少包含方法和路径）
     if parts.len() < 2 {
         send_response(
             &mut stream,
@@ -34,6 +48,7 @@ fn handle_connection(mut stream: TcpStream) -> std::io::Result<()> {
     let method = parts[0];
     let path = parts[1];
 
+    // 只支持GET方法，其他方法返回405错误
     if method != "GET" {
         send_response(
             &mut stream,
@@ -45,6 +60,7 @@ fn handle_connection(mut stream: TcpStream) -> std::io::Result<()> {
         return Ok(());
     }
 
+    // 处理/about路径的特殊响应
     if path == "/about" {
         send_response(
             &mut stream,
@@ -55,6 +71,8 @@ fn handle_connection(mut stream: TcpStream) -> std::io::Result<()> {
         )?;
         return Ok(());
     }
+    
+    // 处理其他静态文件请求
     serve_static_file(&mut stream, path)?;
     Ok(())
 }
@@ -338,5 +356,29 @@ fn get_cache_control(path: &Path) -> &'static str {
 
         // 其他文件（如 txt、json）—— 按需调整
         _ => "no-cache",
+    }
+}
+struct LogEntry {
+    method: String,
+    path: String,
+    start_time: Instant,
+}
+impl LogEntry {
+    fn new(method: String, path: String) -> Self {
+        Self {
+            method,
+            path,
+            start_time: Instant::now(),
+        }
+    }
+
+    fn log(&self, status_code: &str) {
+        let elapsed = self.start_time.elapsed().as_millis();
+        let now = time::OffsetDataTime::now_utc();
+        let timestamp = now.format("%Y-%m-%dT%H:%M:%SZ").unwrap_or("INVALID");
+        eprintln!(
+            "[{}] \"{} {}\" {} {}ms",
+            timestamp, self.method, self.path, status_code, elapsed
+        )
     }
 }
