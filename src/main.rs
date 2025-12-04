@@ -1,6 +1,6 @@
 use std::fs;
 use std::io::{Read, Write};
-use std::net::{TcpListener, TcpStream};
+use std::net::{SocketAddr, TcpListener, TcpStream};
 use std::path::{Component, Path};
 use std::time::{SystemTime, Instant, UNIX_EPOCH};
 fn main() -> std::io::Result<()> {
@@ -27,14 +27,15 @@ fn main() -> std::io::Result<()> {
 fn handle_connection(mut stream: TcpStream) -> std::io::Result<()> {
     let mut buffer = [0; 1024];
     stream.read(&mut buffer)?;
-    
     // 解析HTTP请求的第一行，获取请求方法和路径
     let request = String::from_utf8_lossy(&buffer[..]);
     let request_line = request.lines().next().unwrap_or("");
     let parts: Vec<&str> = request_line.split_whitespace().collect();
-    
+    let client_addr = stream.peer_addr().ok();
     // 检查请求格式是否有效（至少包含方法和路径）
     if parts.len() < 2 {
+        let log = LogEntry::new("UNKNOWN".to_string(), "INVALID".to_string(), client_addr);
+        log.log("400");
         send_response(
             &mut stream,
             "400 Bad Request",
@@ -44,12 +45,12 @@ fn handle_connection(mut stream: TcpStream) -> std::io::Result<()> {
         )?;
         return Ok(());
     }
-
     let method = parts[0];
     let path = parts[1];
-
+    let log = LogEntry::new(method.to_string(), path.to_string(), client_addr);
     // 只支持GET方法，其他方法返回405错误
     if method != "GET" {
+        log.log("405");
         send_response(
             &mut stream,
             "405 Method Not Allowed",
@@ -59,9 +60,9 @@ fn handle_connection(mut stream: TcpStream) -> std::io::Result<()> {
         )?;
         return Ok(());
     }
-
     // 处理/about路径的特殊响应
     if path == "/about" {
+        log.log("200");
         send_response(
             &mut stream,
             "200 OK",
@@ -71,9 +72,15 @@ fn handle_connection(mut stream: TcpStream) -> std::io::Result<()> {
         )?;
         return Ok(());
     }
-    
-    // 处理其他静态文件请求
-    serve_static_file(&mut stream, path)?;
+    let status = match serve_static_file(&mut stream, &path) {
+        Ok(code) => code,
+        Err(_) => {
+            // 发生内部错误（如文件读取失败）
+            serve_500(&mut stream)?;
+            "500".to_string()
+        }
+    };
+    log.log(&status);
     Ok(())
 }
 fn get_content_type(path: &str) -> &'static str {
@@ -119,35 +126,33 @@ fn send_response(
     stream.flush()?;
     Ok(())
 }
-fn serve_static_file(stream: &mut TcpStream, request_path: &str) -> std::io::Result<()> {
-    // 处理路径
+fn serve_static_file(stream: &mut TcpStream, request_path: &str) -> std::io::Result<String> {
     let file_path = resolve_safe_path("public", request_path)?;
-    // 检查是否为目录
+
     if file_path.is_dir() {
         let index_path = file_path.join("index.html");
         if index_path.exists() {
             let content = fs::read(&index_path)?;
             let content_type = get_content_type("index.html");
             let cache_control = get_cache_control(&index_path);
-            return send_response(
+            send_response(
                 stream,
                 "200 OK",
                 &content,
                 content_type,
                 Some(&format!("Cache-Control: {}", cache_control)),
-            );
+            )?;
+            return Ok("200".to_string());
         } else {
-            return serve_directory_listing(stream, &file_path, request_path);
+            serve_directory_listing(stream, &file_path, request_path)?;
+            return Ok("200".to_string());
         }
     }
-    // 检查文件是否存在
     if !file_path.exists() {
-        return serve_404(stream);
+        serve_404(stream)?;
+        return Ok("404".to_string());
     }
-    let content = match fs::read(&file_path) {
-        Ok(data) => data,
-        Err(_) => return serve_404(stream),
-    };
+    let content = fs::read(&file_path)?;
     let content_type = match file_path.to_str() {
         Some(path_str) => get_content_type(path_str),
         None => "application/octet-stream", // 处理非UTF-8路径的情况
@@ -159,7 +164,8 @@ fn serve_static_file(stream: &mut TcpStream, request_path: &str) -> std::io::Res
         &content,
         content_type,
         Some(&format!("Cache-Control: {}", cache_control)),
-    )
+    )?;
+    Ok("200".to_string())
 }
 fn resolve_safe_path(base: &str, request_path: &str) -> std::io::Result<std::path::PathBuf> {
     let base_path = Path::new(base).canonicalize()?;
@@ -225,7 +231,6 @@ fn serve_directory_listing(
     request_path: &str,
 ) -> std::io::Result<()> {
     let mut entries: Vec<(String, bool, Option<u64>, Option<SystemTime>)> = vec![];
-
     // 读取目录内容
     for entry in fs::read_dir(dir_path)? {
         let entry = entry?;
@@ -242,7 +247,6 @@ fn serve_directory_listing(
 
         entries.push((name, is_dir, size, modified));
     }
-
     // 排序：目录在前，文件在后；同类型按名称排序
     entries.sort_by(|a, b| {
         match (a.1, b.1) {
@@ -251,7 +255,6 @@ fn serve_directory_listing(
             _ => a.0.cmp(&b.0), // 同类型按名称
         }
     });
-
     // 构建 HTML
     let mut html = String::from("<!DOCTYPE html><html><head>");
     html.push_str(r#"<meta charset="utf-8"><title>Index of "#);
@@ -275,7 +278,6 @@ fn serve_directory_listing(
     html.push_str(
         "</h1><table><thead><tr><th>Name</th><th>Size</th><th>Modified</th></tr></thead><tbody>",
     );
-
     // 添加 ".." 返回上级（除非是根目录）
     if request_path != "/" && request_path != "" {
         let parent_path = Path::new(request_path)
@@ -292,7 +294,6 @@ fn serve_directory_listing(
             display_parent
         ));
     }
-
     // 添加每个条目
     for (name, is_dir, size, _modified) in entries {
         let encoded_name = url_encode(&name);
@@ -361,24 +362,117 @@ fn get_cache_control(path: &Path) -> &'static str {
 struct LogEntry {
     method: String,
     path: String,
+    client_addr: Option<SocketAddr>,
     start_time: Instant,
 }
 impl LogEntry {
-    fn new(method: String, path: String) -> Self {
+    fn new(method: String, path: String, client_addr: Option<SocketAddr>) -> Self {
         Self {
             method,
             path,
-            start_time: Instant::now(),
+            client_addr,
+            start_time: std::time::Instant::now(),
         }
     }
-
     fn log(&self, status_code: &str) {
         let elapsed = self.start_time.elapsed().as_millis();
-        let now = time::OffsetDataTime::now_utc();
-        let timestamp = now.format("%Y-%m-%dT%H:%M:%SZ").unwrap_or("INVALID");
-        eprintln!(
-            "[{}] \"{} {}\" {} {}ms",
-            timestamp, self.method, self.path, status_code, elapsed
-        )
+        let timestamp = format_timestamp();
+        let client_info = self.client_addr.map(|addr| addr.to_string()).unwrap_or_else(|| "unknown".to_string());
+        let message = format!(
+            "[{}] \"{} {}\" {} {}ms - {}",
+            timestamp, self.method, self.path, status_code, elapsed, client_info
+        );
+        eprintln!("{}",message);
+        // 追加到日志文件
+        if let Err(e) = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open("access.log")
+            .and_then(|mut file| writeln!(file, "{}", message)){
+            eprintln!("Failed to write log to file: {}", e);
+        }
     }
+}
+fn format_timestamp() -> String {
+    let now = SystemTime::now();
+    let duration = now.duration_since(UNIX_EPOCH).unwrap_or_default();
+    let secs = duration.as_secs();
+
+    // 将 Unix 时间戳转换为 UTC 日期时间（手动计算）
+    let datetime = timestamp_to_datetime(secs);
+    format!(
+        "{:04}-{:02}-{:02} {:02}:{:02}:{:02}",
+        datetime.year,
+        datetime.month,
+        datetime.day,
+        datetime.hour,
+        datetime.minute,
+        datetime.second
+    )
+}
+// 简单的 Unix 时间戳 → UTC 日期时间转换（不考虑闰秒）
+struct DateTime {
+    year: u32,
+    month: u32,
+    day: u32,
+    hour: u32,
+    minute: u32,
+    second: u32,
+}
+fn timestamp_to_datetime(mut t: u64) -> DateTime {
+    // 秒转为分钟、小时等
+    let second = (t % 60) as u32;
+    t /= 60;
+    let minute = (t % 60) as u32;
+    t /= 60;
+    let hour = (t % 24) as u32;
+    t /= 24;
+
+    // 处理年月日（从 1970 年开始）
+    let mut year = 1970;
+    loop {
+        let days_in_year = if is_leap_year(year) { 366 } else { 365 };
+        if t < days_in_year as u64 {
+            break;
+        }
+        t -= days_in_year as u64;
+        year += 1;
+    }
+    let mut month = 1;
+    let mut days_left = t as u32;
+    let days_in_month = [
+        31, // Jan
+        if is_leap_year(year) { 29 } else { 28 }, // Feb
+        31, 30, 31, 30, 31, 31, 30, 31, 30, 31,
+    ];
+
+    for (i, &dim) in days_in_month.iter().enumerate() {
+        if days_left < dim {
+            month = i as u32 + 1;
+            break;
+        }
+        days_left -= dim;
+    }
+
+    DateTime {
+        year,
+        month,
+        day: days_left + 1, // 日从 1 开始
+        hour,
+        minute,
+        second,
+    }
+}
+fn is_leap_year(year: u32) -> bool {
+    (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0)
+}
+
+fn serve_500(stream: &mut TcpStream) -> std::io::Result<()> {
+    send_response(
+        stream,
+        "500 Internal Server Error",
+        b"Internal Server Error",
+        "text/plain",
+        Some("Cache-Control: no-cache"),
+    )
 }
