@@ -1,145 +1,26 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Product Name - Tokyo Night Day 风格</title>
-    <link rel="stylesheet" href="styles/style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NoteFlow | Reliable Notes, Powered by Rust</title>
+  <link rel="stylesheet" href="styles/style.css">
+  <script src="scripts/index.js" defer></script>
 </head>
 <body>
-    <header>
-        <nav>
-            <div class="nav-container">
-                <div class="logo">
-                    <span class="logo-icon">⚡</span>
-                    <span class="logo-text">Product</span>
-                </div>
-                <ul class="nav-links">
-                    <li><a href="#features">特性</a></li>
-                    <li><a href="#docs">文档</a></li>
-                    <li><a href="#community">社区</a></li>
-                    <li><a href="#blog">博客</a></li>
-                </ul>
-                <div class="nav-cta">
-                    <button class="btn btn-primary">开始使用</button>
-                </div>
-            </div>
-        </nav>
-    </header>
-
-    <main>
-        <section class="hero">
-            <div class="hero-content">
-                <h1>构建快速、可靠、高效的应用</h1>
-                <p>Product 是一款现代化的编程语言，专注于性能、安全和并发性，让开发者能够构建更强大的应用。</p>
-                <div class="hero-buttons">
-                    <button class="btn btn-primary btn-large">立即开始</button>
-                    <button class="btn btn-secondary btn-large">了解更多</button>
-                </div>
-            </div>
-            <div class="hero-code">
-                <pre><code>fn main() {
-    println!("Hello, Tokyo Night Day!");
-}</code></pre>
-            </div>
-        </section>
-
-        <section id="features" class="features">
-            <div class="container">
-                <h2>核心特性</h2>
-                <div class="features-grid">
-                    <div class="feature-card">
-                        <div class="feature-icon">🔒</div>
-                        <h3>内存安全</h3>
-                        <p>无需垃圾回收器即可防止段错误，确保内存安全。</p>
-                    </div>
-                    <div class="feature-card">
-                        <div class="feature-icon">⚡</div>
-                        <h3>高性能</h3>
-                        <p>零成本抽象，直接编译为机器码，性能媲美 C/C++。</p>
-                    </div>
-                    <div class="feature-card">
-                        <div class="feature-icon">🔄</div>
-                        <h3>并发安全</h3>
-                        <p>通过所有权系统防止数据竞争，轻松编写并发代码。</p>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <section class="testimonials">
-            <div class="container">
-                <h2>用户评价</h2>
-                <div class="testimonial-grid">
-                    <div class="testimonial-card">
-                        <p>"Product 彻底改变了我们构建系统的方式，性能和安全性都达到了新的高度。"</p>
-                        <div class="testimonial-author">- 技术总监，TechCorp</div>
-                    </div>
-                    <div class="testimonial-card">
-                        <p>"从 C++ 迁移到 Product 后，我们的代码库更安全，开发效率也显著提升。"</p>
-                        <div class="testimonial-author">- 软件工程师，InnovateX</div>
-                    </div>
-                    <div class="testimonial-card">
-                        <p>"学习曲线虽然陡峭，但一旦掌握，Product 让我们能够构建更可靠的系统。"</p>
-                        <div class="testimonial-author">- 系统架构师，FutureLabs</div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <section id="community" class="community">
-            <div class="container">
-                <h2>加入我们的社区</h2>
-                <p>与全球开发者一起学习、分享和构建未来</p>
-                <div class="community-links">
-                    <a href="#" class="community-link">Discord</a>
-                    <a href="#" class="community-link">GitHub</a>
-                    <a href="#" class="community-link">论坛</a>
-                    <a href="#" class="community-link">Twitter</a>
-                </div>
-            </div>
-        </section>
-    </main>
-
-    <footer>
-        <div class="footer-content">
-            <div class="footer-section">
-                <h3>Product</h3>
-                <p>构建快速、可靠、高效的现代应用</p>
-            </div>
-            <div class="footer-section">
-                <h4>文档</h4>
-                <ul>
-                    <li><a href="#">入门指南</a></li>
-                    <li><a href="#">语言参考</a></li>
-                    <li><a href="#">标准库</a></li>
-                    <li><a href="#">Cargo 指南</a></li>
-                </ul>
-            </div>
-            <div class="footer-section">
-                <h4>社区</h4>
-                <ul>
-                    <li><a href="#">论坛</a></li>
-                    <li><a href="#">Discord</a></li>
-                    <li><a href="#">GitHub</a></li>
-                    <li><a href="#">贡献指南</a></li>
-                </ul>
-            </div>
-            <div class="footer-section">
-                <h4>公司</h4>
-                <ul>
-                    <li><a href="#">关于我们</a></li>
-                    <li><a href="#">博客</a></li>
-                    <li><a href="#">工作机会</a></li>
-                    <li><a href="#">联系方式</a></li>
-                </ul>
-            </div>
-        </div>
-        <div class="footer-bottom">
-            <p>&copy; 2023 Product. 保留所有权利。使用 Tokyo Night Day 主题设计。</p>
-        </div>
-    </footer>
-
-    <script src="scripts/script.js"></script>
+  <div class="hero">
+    <h1>NoteFlow</h1>
+    <p class="subtitle">Your notes, reliably stored. <span class="highlight">AI-powered search</span> finds what you need—fast.</p>
+    
+    <div class="cta-buttons">
+      <button class="btn register-btn">Create Account</button>
+      <button class="btn login-btn">Log In</button>
+    </div>
+    
+    <div class="features">
+      <span>⚡ Rust-powered • 🧠 Smart Search • ✅ Zero Lag</span>
+    </div>
+  </div>
+  
 </body>
 </html>
