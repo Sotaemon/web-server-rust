@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - NoteFlow</title>
+  <link rel="stylesheet" href="./../styles/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+</head>
+<body>
+  <nav class="navbar">
+    <div class="logo">
+      <span class="flow">note</span>flow
+    </div>
+    <div class="nav-actions">
+      <a href="./../index.html" class="btn home-btn"><i class="fas fa-home"></i> Home</a>
+      <a href="./register.html" class="btn login-btn"><i class="fas fa-user-plus"></i> Register</a>
+    </div>
+  </nav>
+
+  <section class="register-section">
+    <div class="container">
+      <h1>Login to your NoteFlow account</h1>
+      <p class="subtitle">Powered by Rust. Fast, reliable, and beautiful.</p>
+      
+      <form id="loginForm" class="register-form">
+        <div class="form-group">
+          <label for="username">Username</label>
+          <input type="text" id="username" name="username" placeholder="Enter your username" required>
+        </div>
+        
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" name="password" placeholder="Enter your password" required>
+        </div>
+
+        <button type="submit" class="btn login-btn">
+          <i class="fas fa-sign-in-alt"></i> Sign in
+        </button>
+        
+        <div class="login-link">
+          <p>Don't have an account yet? <a href="./register.html">Create one</a></p>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <script src="./../scripts/login.js"></script>
+</body>
+</html>

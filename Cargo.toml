@@ -2,3 +2,10 @@
 name = "web_server_rust"
 version = "0.1.0"
 edition = "2024"
+[dependencies]
+mongodb = "2.0"
+bson = "2.0"
+bcrypt = "0.13"
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"

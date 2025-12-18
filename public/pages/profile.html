@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Profile - NoteFlow</title>
+  <link rel="stylesheet" href="./../styles/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+  <!-- 导航栏 -->
+  <nav class="navbar">
+    <div class="logo">Note<span class="flow">Flow</span></div>
+    <div class="nav-actions">
+      <a href="index.html" class="btn btn-outline">Home</a>
+      <a href="logout.html" class="btn btn-primary">Sign Out</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <div class="profile-header">
+      <div class="profile-avatar">J</div>
+      <h1 class="profile-name">John Doe</h1>
+      <p class="profile-email">john.doe@example.com</p>
+      
+      <div class="profile-stats">
+        <div class="stat-item">
+          <span class="stat-value">24</span>
+          <span>Notes</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-value">12</span>
+          <span>Projects</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-value">3</span>
+          <span>Teams</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="profile-content">
+      <div class="profile-card">
+        <h2 class="card-title"><i class="fas fa-user"></i> Personal Information</h2>
+        <div class="profile-info">
+          <div class="info-row">
+            <span class="info-label">Username</span>
+            <span class="info-value">john_doe</span>
+            <button class="edit-btn" id="editUsernameBtn">
+              <i class="fas fa-pen"></i>
+            </button>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Email</span>
+            <span class="info-value">john.doe@example.com</span>
+            <button class="edit-btn" id="editEmailBtn">
+              <i class="fas fa-pen"></i>
+            </button>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Joined</span>
+            <span class="info-value">January 15, 2023</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Last Activity</span>
+            <span class="info-value">Today at 10:30 AM</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="profile-card">
+        <h2 class="card-title"><i class="fas fa-cog"></i> Account Settings</h2>
+        <div class="profile-info">
+          <div class="info-row">
+            <span class="info-label">Password</span>
+            <span class="info-value">••••••••••</span>
+            <button class="edit-btn" id="editPasswordBtn">
+              <i class="fas fa-pen"></i>
+            </button>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Two-Factor Auth</span>
+            <span class="info-value">Enabled</span>
+            <button class="edit-btn" id="edit2FABtn">
+              <i class="fas fa-pen"></i>
+            </button>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Theme</span>
+            <span class="info-value">Light Mode</span>
+            <button class="edit-btn" id="editThemeBtn">
+              <i class="fas fa-pen"></i>
+            </button>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Notification</span>
+            <span class="info-value">Email & App</span>
+            <button class="edit-btn" id="editNotificationsBtn">
+              <i class="fas fa-pen"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="btn-group">
+      <button class="btn btn-cancel">Cancel</button>
+      <button class="btn btn-save">Save Changes</button>
+    </div>
+
+    <button class="logout-btn" id="logoutBtn">
+      <i class="fas fa-sign-out-alt"></i> Sign Out
+    </button>
+  </div>
+
+  <script src="./../scripts/profile.js"></script>
+</body>
+</html>
