@@ -1,27 +1,15 @@
-use std::io::Result;
-use std::net::TcpStream;
-use crate::utils::{serve_static_file, send_response, send_json_response};
+use std::{io::Result, path::Path};
+use tokio::{fs, net::TcpStream};
 
 pub async fn handle_get_request(stream: &mut TcpStream, path: &str, log: &crate::utils::LogEntry) -> Result<()> {
-    if path == "/about" {
-        send_response(
-            stream,
-            "200 OK",
-            b"This is the About page!",
-            "text/plain",
-            Some("Cache-Control: no-store"),
-        )?;
-        log.log("200");
-    } else {
-        let status = match serve_static_file(stream, path) {
-            Ok(code) => code,
-            Err(_) => {
-                crate::utils::serve_500(stream)?;
-                "500".to_string()
-            }
-        };
-        log.log(&status);
-    }
+    let status = match serve_static_file(stream, path).await {
+        Ok(code) => code,
+        Err(_) => {
+            crate::utils::send_500_response(stream, b"500 Internal Server Error").await?;
+            "500".to_string()
+        }
+    };
+    log.log(&status);
     Ok(())
 }
 
@@ -35,13 +23,61 @@ pub async fn handle_post_request(
         "/api/register" => handle_register(stream, body, log).await,
         "/api/login" => handle_login(stream, body, log).await,
         _ => {
-            send_response(stream, "404 Not Found", b"POST endpoint not found", "text/plain", None)?;
+            crate::utils::send_400_response(stream, b"400 Bad Request").await?;
             log.log("404");
             Ok(())
         }
     }
 }
 
+pub async fn serve_static_file(stream: &mut TcpStream, path: &str) -> Result<String> {
+    // 移除开头的斜杠，构建文件路径
+    let path = path.trim_start_matches('/');
+    let file_path = Path::new("public").join(path);
+
+    // 检查文件是否存在
+    if !file_path.exists() {
+        crate::utils::send_response(stream, "404 Not Found", b"File not found", "text/plain", None).await?;
+        return Ok("404".to_string());
+    }
+
+    // 读取文件内容
+    let contents = match fs::read(&file_path).await {
+        Ok(c) => c,
+        Err(_) => {
+            crate::utils::send_response(stream, "500 Internal Server Error", b"Error reading file", "text/plain", None).await?;
+            return Ok("500".to_string());
+        }
+    };
+
+    // 确定MIME类型
+    let mime_type = match file_path.extension().and_then(|s| s.to_str()) {
+        Some("html") => "text/html",
+        Some("css") => "text/css",
+        Some("js") => "application/javascript",
+        Some("png") => "image/png",
+        Some("jpg") | Some("jpeg") => "image/jpeg",
+        Some("gif") => "image/gif",
+        Some("svg") => "image/svg+xml",
+        _ => "application/octet-stream",
+    };
+
+    // 发送文件内容
+    crate::utils::send_response(stream, "200 OK", &contents, mime_type, None).await?;
+    Ok("200".to_string())
+}
+
+async fn handle_login(stream: &mut TcpStream, body: &str, log: &crate::utils::LogEntry)-> Result<()> {
+    Ok(())
+}
+async fn handle_register(
+    stream: &mut TcpStream,
+    body: &str,
+    log: &crate::utils::LogEntry,
+) -> Result<()> {
+    Ok(())
+}
+/*
 async fn handle_register(
     stream: &mut TcpStream,
     body: &str,
@@ -151,3 +187,4 @@ async fn handle_login(
     
     Ok(())
 }
+*/

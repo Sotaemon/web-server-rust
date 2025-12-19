@@ -1,12 +1,13 @@
-/*
-use tokio::fs;
-use tokio::io::{AsyncWriteExt, AsyncBufReadExt, AsyncReadExt};
-use std::io::Result;
+use chrono::Utc;
+use std::fs::OpenOptions;
+use std::io::Write;
 use std::net::SocketAddr;
+use std::time::Instant;
 use tokio::net::TcpStream;
-use std::time::{Instant, SystemTime, UNIX_EPOCH};
-use std::path::{Path, Component};
+use tokio::io::AsyncWriteExt;
 
+/// 日志条目，记录HTTP请求信息
+#[derive(Debug)]
 pub struct LogEntry {
     method: String,
     path: String,
@@ -14,6 +15,7 @@ pub struct LogEntry {
     start_time: Instant,
 }
 impl LogEntry {
+    /// 创建新的日志条目
     pub fn new(method: String, path: String, client_addr: Option<SocketAddr>) -> Self {
         Self {
             method,
@@ -22,139 +24,93 @@ impl LogEntry {
             start_time: Instant::now(),
         }
     }
-
+    /// 记录日志到控制台和文件
     pub fn log(&self, status_code: &str) {
+        let log_message = self.format_log_message(status_code);
+        
+        // 输出到控制台
+        eprintln!("{}", log_message);
+        
+        // 写入日志文件
+        if let Err(e) = self.write_to_file(&log_message) {
+            eprintln!("Failed to write log to file: {}", e);
+        }
+    }
+    /// 格式化日志消息
+    fn format_log_message(&self, status_code: &str) -> String {
         let elapsed = self.start_time.elapsed().as_millis();
-        let timestamp = format_timestamp();
+        let timestamp = Utc::now().format("%Y-%m-%d %H:%M:%S");
         let client_info = self
             .client_addr
             .map(|addr| addr.to_string())
             .unwrap_or_else(|| "unknown".to_string());
-        let message = format!(
+
+        format!(
             "[{}] \"{} {}\" {} {}ms - {}",
             timestamp, self.method, self.path, status_code, elapsed, client_info
-        );
-        eprintln!("{}", message);
-        
-        if let Err(e) = std::fs::OpenOptions::new()
+        )
+    }
+    /// 将日志消息写入文件
+    fn write_to_file(&self, message: &str) -> std::io::Result<()> {
+        let mut file = OpenOptions::new()
             .create(true)
             .append(true)
-            .open("access.log")
-            .and_then(|mut file| writeln!(file, "{}", message))
-        {
-            eprintln!("Failed to write log to file: {}", e);
-        }
+            .open("access.log")?;
+        writeln!(file, "{}", message)
     }
 }
-fn format_timestamp() -> String {
-    let now = SystemTime::now();
-    let duration = now.duration_since(UNIX_EPOCH).unwrap_or_default();
-    let secs = duration.as_secs();
-
-    // 将 Unix 时间戳转换为 UTC 日期时间（手动计算）
-    let datetime = timestamp_to_datetime(secs);
-    format!(
-        "{:04}-{:02}-{:02} {:02}:{:02}:{:02}",
-        datetime.year,
-        datetime.month,
-        datetime.day,
-        datetime.hour,
-        datetime.minute,
-        datetime.second
-    )
-}
-// 简单的 Unix 时间戳 → UTC 日期时间转换（不考虑闰秒）
-struct DateTime {
-    year: u32,
-    month: u32,
-    day: u32,
-    hour: u32,
-    minute: u32,
-    second: u32,
-}
-fn timestamp_to_datetime(mut t: u64) -> DateTime {
-    // 秒转为分钟、小时等
-    let second = (t % 60) as u32;
-    t /= 60;
-    let minute = (t % 60) as u32;
-    t /= 60;
-    let hour = (t % 24) as u32;
-    t /= 24;
-
-    // 处理年月日（从 1970 年开始）
-    let mut year = 1970;
-    loop {
-        let days_in_year = if is_leap_year(year) { 366 } else { 365 };
-        if t < days_in_year as u64 {
-            break;
-        }
-        t -= days_in_year as u64;
-        year += 1;
-    }
-    let mut month = 1;
-    let mut days_left = t as u32;
-    let days_in_month = [
-        31,                                       // Jan
-        if is_leap_year(year) { 29 } else { 28 }, // Feb
-        31,
-        30,
-        31,
-        30,
-        31,
-        31,
-        30,
-        31,
-        30,
-        31,
-    ];
-
-    for (i, &dim) in days_in_month.iter().enumerate() {
-        if days_left < dim {
-            month = i as u32 + 1;
-            break;
-        }
-        days_left -= dim;
-    }
-
-    DateTime {
-        year,
-        month,
-        day: days_left + 1, // 日从 1 开始
-        hour,
-        minute,
-        second,
-    }
-}
-fn is_leap_year(year: u32) -> bool {
-    (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0)
-}
+/// 发送HTTP响应
 pub async fn send_response(
     stream: &mut TcpStream,
     status: &str,
     body: &[u8],
     content_type: &str,
     extra_headers: Option<&str>,
-) -> Result<()> {
+) -> std::io::Result<()> {
     let mut response = format!(
         "HTTP/1.1 {}\r\nContent-Type: {}\r\nContent-Length: {}\r\n",
         status,
         content_type,
         body.len()
     );
-
     if let Some(headers) = extra_headers {
         response.push_str(headers);
         response.push_str("\r\n");
     }
-
     response.push_str("\r\n");
-
     stream.write_all(response.as_bytes()).await?;
     stream.write_all(body).await?;
     stream.flush().await?;
     Ok(())
 }
-
+pub async fn send_400_response(stream: &mut TcpStream, message: &[u8]) -> std::io::Result<()> {
+    send_response(
+        stream,
+        "400 Bad Request",
+        message,
+        "text/plain",
+        Some("Cache-Control: no-store"),
+    ).await
+}
+pub async fn send_405_response(stream: &mut TcpStream, message: &[u8]) -> std::io::Result<()> {
+    send_response(
+        stream,
+        "405 Method Not Allowed",
+        message,
+        "text/plain",
+        Some("Cache-Control: no-store"),
+    ).await
+}
+pub async fn send_500_response(stream: &mut TcpStream, message: &[u8]) -> std::io::Result<()> {
+    send_response(
+        stream,
+        "500 Internal Server Error",
+        message,
+        "text/plain",
+        Some("Cache-Control: no-store"),
+    ).await
+}
+/*
 pub fn send_json_response(
     stream: &mut TcpStream,
     status_code: u16,

@@ -4,21 +4,16 @@ use std::collections::HashMap;
 use std::net::SocketAddr;
 
 pub async fn handle_connection(mut stream: TcpStream, addr: SocketAddr) -> std::io::Result<()> {
-    // 创建缓冲读取器
     let mut reader = BufReader::new(&mut stream);
-
-    // 读取并解析请求行
     let mut request_line = String::new();
-    if reader.read_line(&mut request_line).await? == 0 {
-        return Ok(()); // 客户端关闭连接
-    }
+    reader.read_line(&mut request_line).await?;
 
     // 解析请求方法、路径和HTTP版本
     let parts: Vec<&str> = request_line.trim().split_whitespace().collect();
     if parts.len() != 3 {
         let log = crate::utils::LogEntry::new("UNKNOWN".to_string(), "INVALID".to_string(), Some(addr));
         log.log("400");
-        return 
+        return crate::utils::send_400_response(&mut stream, b"Invalid request").await;
     }
 
     let method = parts[0];
@@ -69,13 +64,7 @@ pub async fn handle_connection(mut stream: TcpStream, addr: SocketAddr) -> std::
         "GET" => crate::handlers::handle_get_request(&mut stream, path, &log).await,
         "POST" => crate::handlers::handle_post_request(&mut stream, path, &body_str, &log).await,
         _ => {
-            crate::utils::send_response(
-                &mut stream,
-                "405 Method Not Allowed",
-                b"Method not allowed",
-                "text/plain",
-                None,
-            )?;
+            crate::utils::send_405_response(&mut stream, b"Method Not Allowed");
             log.log("405");
             Ok(())
         }
