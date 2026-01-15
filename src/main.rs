@@ -1,3 +1,8 @@
+fn main() {
+    let socket = "127.0.0.1:50000".to_string();
+    let source = "~/Projects/web-client-node".to_string();
+}
+/*
 mod utils;
 mod server;
 mod http;
@@ -13,3 +18,4 @@ async fn main() -> std::io::Result<()> {
     // 使用 await 等待异步操作完成
    server.run().await
 }
+*/
