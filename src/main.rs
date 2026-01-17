@@ -1,21 +1,12 @@
-fn main() {
-    let socket = "127.0.0.1:50000".to_string();
-    let source = "~/Projects/web-client-node".to_string();
-}
-/*
-mod utils;
-mod server;
-mod http;
-mod handlers;
+use std::io::{Read, Write};
+use std::net::TcpListener;
 
-#[tokio::main]
-// 这是一个异步主函数，返回一个 I/O 结果类型，可能包含成功或错误信息
-async fn main() -> std::io::Result<()> {
-    // 创建一个新的服务器实例，绑定到本地地址 127.0.0.1:10106
-    // 使用 ? 操作符如果创建失败则提前返回错误
-   let server = crate::server::Server::new("127.0.0.1:10106").await?;
-    // 异步运行服务器，等待其完成
-    // 使用 await 等待异步操作完成
-   server.run().await
+fn main() {
+    let socket = "127.0.0.1:50000";
+    let source = "~/Projects/web-client-node";
+
+    let listener = TcpListener::bind(socket).unwrap();
+    println!("正在监听 Tcp 套接字 {}", socket);
+
+    for stream in listener.incoming() {}
 }
-*/
